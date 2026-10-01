@@ -1,0 +1,606 @@
+<!DOCTYPE html>
+<html lang="ru" class="scroll-smooth">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Цифровая пауза: Почему мы не умеем ничего не делать</title>
+    
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    
+    <!-- Google Fonts -->
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Plus+Jakarta+Sans:wght@300;400;500;600;700&family=Inter:wght@200;300;400;500;600&display=swap" rel="stylesheet">
+    
+    <script>
+        tailwind.config = {
+            theme: {
+                extend: {
+                    fontFamily: {
+                        sans: ['Inter', 'sans-serif'],
+                        display: ['Plus Jakarta Sans', 'sans-serif'],
+                    },
+                    colors: {
+                        dark: {
+                            900: '#07080c',
+                            800: '#0f111a',
+                            700: '#171a28',
+                            600: '#22263a',
+                        },
+                        accent: {
+                            violet: '#8b5cf6',
+                            cyan: '#06b6d4',
+                            emerald: '#10b981',
+                            amber: '#f59e0b',
+                            rose: '#f43f5e'
+                        }
+                    },
+                    animation: {
+                        'float-slow': 'float 14s ease-in-out infinite',
+                        'float-delayed': 'float 18s ease-in-out 4s infinite',
+                        'pulse-slow': 'pulseGlow 6s ease-in-out infinite',
+                    },
+                    keyframes: {
+                        float: {
+                            '0%, 100%': { transform: 'translateY(0px) rotate(0deg) scale(1)' },
+                            '50%': { transform: 'translateY(-30px) rotate(8deg) scale(1.05)' },
+                        },
+                        pulseGlow: {
+                            '0%, 100%': { opacity: '0.3' },
+                            '50%': { opacity: '0.7' },
+                        }
+                    }
+                }
+            }
+        }
+    </script>
+
+    <style>
+        /* Custom scrollbar */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #07080c;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #171a28;
+            border-radius: 4px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #22263a;
+        }
+
+        /* Glassmorphism card styles */
+        .glass-card {
+            background: rgba(15, 17, 26, 0.65);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border: 1px solid rgba(255, 255, 255, 0.08);
+        }
+
+        .glass-card-hover {
+            transition: all 0.4s cubic-bezier(0.16, 1, 0.3, 1);
+        }
+
+        .glass-card-hover:hover {
+            border-color: rgba(139, 92, 246, 0.35);
+            transform: translateY(-4px);
+            box-shadow: 0 16px 36px -10px rgba(139, 92, 246, 0.15);
+        }
+
+        /* Locked scroll state during timer */
+        body.locked {
+            overflow: hidden;
+        }
+
+        /* Breathing cycle keyframes */
+        @keyframes breatheCycle {
+            0% { transform: scale(1); opacity: 0.4; }
+            40% { transform: scale(1.6); opacity: 0.95; }  /* Inhale (4s) */
+            60% { transform: scale(1.6); opacity: 0.95; }  /* Hold (2s) */
+            100% { transform: scale(1); opacity: 0.4; }   /* Exhale (4s) */
+        }
+
+        .breathing-active .breathing-circle {
+            animation: breatheCycle 10s ease-in-out infinite;
+        }
+
+        /* Custom Range Slider styling */
+        input[type=range] {
+            -webkit-appearance: none;
+            background: transparent;
+        }
+        input[type=range]::-webkit-slider-thumb {
+            -webkit-appearance: none;
+            height: 18px;
+            width: 18px;
+            border-radius: 50%;
+            background: #8b5cf6;
+            cursor: pointer;
+            box-shadow: 0 0 12px rgba(139, 92, 246, 0.8);
+            margin-top: -6px;
+        }
+        input[type=range]::-webkit-slider-runnable-track {
+            width: 100%;
+            height: 6px;
+            cursor: pointer;
+            background: #171a28;
+            border-radius: 3px;
+        }
+
+        /* Tab Transition */
+        .tab-content {
+            display: none;
+            opacity: 0;
+            transition: opacity 0.4s ease-in-out;
+        }
+        .tab-content.active {
+            display: block;
+            opacity: 1;
+        }
+    </style>
+</head>
+<body class="bg-dark-900 text-slate-200 font-sans antialiased locked selection:bg-accent-violet selection:text-white min-h-screen relative">
+
+    <div class="fixed inset-0 overflow-hidden pointer-events-none z-0">
+        <div class="absolute -top-40 -left-40 w-[30rem] h-[30rem] bg-accent-violet/15 rounded-full blur-[140px] animate-float-slow"></div>
+        <div class="absolute top-1/3 -right-40 w-[32rem] h-[32rem] bg-accent-cyan/10 rounded-full blur-[160px] animate-float-delayed"></div>
+        <div class="absolute bottom-10 left-1/4 w-[28rem] h-[28rem] bg-accent-rose/10 rounded-full blur-[150px] animate-float-slow"></div>
+    </div>
+
+    <div id="pause-screen" class="fixed inset-0 z-50 flex flex-col items-center justify-center bg-dark-900 transition-opacity duration-1000 p-6 text-center">
+        <div class="max-w-md w-full flex flex-col items-center">
+            <div class="relative flex items-center justify-center w-36 h-36 mb-8">
+                <svg class="w-full h-full transform -rotate-90">
+                    <circle cx="72" cy="72" r="64" stroke="currentColor" stroke-width="2.5" class="text-dark-700" fill="transparent"/>
+                    <circle id="timer-ring" cx="72" cy="72" r="64" stroke="currentColor" stroke-width="2.5" class="text-accent-violet transition-all duration-1000 ease-linear" fill="transparent" stroke-dasharray="402.12" stroke-dashoffset="0"/>
+                </svg>
+                <span id="timer-seconds" class="absolute font-display text-5xl font-extralight text-white tracking-widest">5</span>
+            </div>
+            
+            <h2 class="font-display text-2xl sm:text-3xl font-light text-white tracking-wide mb-3">
+                Побудьте в тишине 5 секунд...
+            </h2>
+            <p class="text-sm text-slate-400 font-light max-w-xs leading-relaxed">
+                Сделайте один спокойный вдох. Дайте уму небольшую паузу перед погружением.
+            </p>
+        </div>
+    </div>
+
+    <div id="main-wrapper" class="relative z-10 opacity-20 transition-opacity duration-1000">
+        <header class="fixed top-0 left-0 right-0 z-40 bg-dark-900/70 backdrop-blur-md border-b border-white/5 py-4 px-6 transition-all">
+            <div class="max-w-5xl mx-auto flex justify-between items-center">
+                <div class="flex items-center space-x-3">
+                    <span class="w-2.5 h-2.5 rounded-full bg-accent-violet animate-pulse"></span>
+                    <span class="font-display text-xs sm:text-sm tracking-widest uppercase text-slate-300 font-medium">Цифровая Пауза</span>
+                </div>
+                <button onclick="openBreathModal()" class="text-xs uppercase tracking-wider px-4 py-2 rounded-full glass-card hover:bg-white/10 text-slate-300 transition-all border border-white/10 flex items-center gap-2">
+                    <span class="w-2 h-2 rounded-full bg-accent-cyan"></span>
+                    <span>Минута осознанности</span>
+                </button>
+            </div>
+        </header>
+
+        <section class="min-h-screen flex flex-col justify-center items-center px-6 pt-28 pb-16 text-center max-w-4xl mx-auto">
+            <div class="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full glass-card text-xs text-slate-400 mb-8 border border-white/10">
+                <span class="text-accent-violet">●</span>
+                <span>Интерактивное исследование привычек</span>
+            </div>
+            
+            <h1 class="font-display text-4xl sm:text-6xl md:text-7xl font-extralight tracking-tight text-white mb-8 leading-[1.15]">
+                Почему мы не умеем <br class="hidden sm:inline"/>
+                <span class="bg-gradient-to-r from-accent-violet via-accent-cyan to-accent-emerald bg-clip-text text-transparent font-normal">ничего не делать?</span>
+            </h1>
+            
+            <p class="text-base sm:text-xl text-slate-400 max-w-2xl font-light leading-relaxed mb-12">
+                В очереди за кофе, в лифте, на красном свете светофора или перед сном — мы машинально тянемся к экрану. Что происходит с нашим мозгом в моменты паузы?
+            </p>
+
+            <a href="#intro-section" class="group flex flex-col items-center gap-3 text-slate-500 hover:text-white transition-colors duration-300">
+                <span class="text-xs tracking-widest uppercase font-light">Листать вниз</span>
+                <div class="w-6 h-10 rounded-full border border-slate-700 flex justify-center pt-2 group-hover:border-slate-500 transition-colors">
+                    <div class="w-1.5 h-2.5 bg-accent-violet rounded-full animate-bounce"></div>
+                </div>
+            </a>
+        </section>
+
+        <section id="intro-section" class="py-24 px-6 max-w-4xl mx-auto">
+            <div class="glass-card p-8 sm:p-12 rounded-3xl relative overflow-hidden">
+                <div class="absolute top-0 left-0 w-2 h-full bg-gradient-to-b from-accent-violet to-accent-cyan"></div>
+                <span class="text-xs uppercase tracking-widest text-accent-violet font-semibold">Первый шаг к пониманию</span>
+                <h2 class="font-display text-2xl sm:text-4xl font-light text-white mt-3 mb-6">
+                    Что происходит, когда мы берем в руки телефон?
+                </h2>
+                <div class="space-y-4 text-slate-300 text-sm sm:text-base font-light leading-relaxed">
+                    <p>
+                        В среднем человек касаются экрана смартфона **более 2 600 раз в день**. Мы делаем это настолько автоматически, что часто даже не фиксируем момент, когда рука достает гаджет из кармана.
+                    </p>
+                    <p>
+                        Мозг воспринимает любую незаполненную паузу — тишину, ожидание, лёгкую скуку — как микростресс или неизвестность. Смартфон становится мгновенным «соской для взрослых», спасающей от встречи с собственными мыслями.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-24 px-6 max-w-5xl mx-auto">
+            <div class="text-center mb-16">
+                <span class="text-xs uppercase tracking-widest text-accent-cyan font-semibold">Психология импульса</span>
+                <h2 class="font-display text-3xl sm:text-4xl font-light text-white mt-2">
+                    5 причин, почему рука тянется к экрану
+                </h2>
+                <p class="text-slate-400 text-sm mt-3 max-w-xl mx-auto">
+                    Выберите триггер, чтобы узнать, какими нейробиологическими механизмами объясняется наша цифровая жажда.
+                </p>
+            </div>
+
+            <!-- Tab Buttons -->
+            <div class="flex flex-wrap justify-center gap-2 sm:gap-3 mb-10">
+                <button onclick="switchTab('habit')" id="btn-habit" class="tab-btn active px-5 py-3 rounded-xl text-xs sm:text-sm font-medium transition-all glass-card border-accent-violet text-white">
+                    1. Привычка
+                </button>
+                <button onclick="switchTab('boredom')" id="btn-boredom" class="tab-btn px-5 py-3 rounded-xl text-xs sm:text-sm font-medium transition-all glass-card text-slate-400 hover:text-white">
+                    2. Скука
+                </button>
+                <button onclick="switchTab('awkward')" id="btn-awkward" class="tab-btn px-5 py-3 rounded-xl text-xs sm:text-sm font-medium transition-all glass-card text-slate-400 hover:text-white">
+                    3. Неловкость
+                </button>
+                <button onclick="switchTab('fatigue')" id="btn-fatigue" class="tab-btn px-5 py-3 rounded-xl text-xs sm:text-sm font-medium transition-all glass-card text-slate-400 hover:text-white">
+                    4. Усталость
+                </button>
+                <button onclick="switchTab('waiting')" id="btn-waiting" class="tab-btn px-5 py-3 rounded-xl text-xs sm:text-sm font-medium transition-all glass-card text-slate-400 hover:text-white">
+                    5. Ожидание ответа
+                </button>
+            </div>
+
+            <!-- Tab Contents Container -->
+            <div class="glass-card p-8 sm:p-12 rounded-3xl min-h-[280px]">
+                
+                <!-- Tab 1: Habit -->
+                <div id="tab-habit" class="tab-content active space-y-4">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="p-2.5 rounded-xl bg-accent-violet/10 text-accent-violet font-display font-semibold">01</span>
+                        <h3 class="font-display text-xl sm:text-2xl font-light text-white">Автоматический моторный паттерн</h3>
+                    </div>
+                    <p class="text-slate-300 text-sm sm:text-base font-light leading-relaxed">
+                        Жест разблокировки телефона превратился в мышечную память. Базальные ядра мозга формируют «петлю привычки»: триггер (пауза в работе) -> действие (провести пальцем по экрану) -> награда (яркая иконка или новое уведомление).
+                    </p>
+                    <div class="p-4 rounded-xl bg-white/5 border border-white/5 text-xs text-slate-400 font-light italic">
+                        💡 Исследования показывают: до 45% наших повседневных действий со смартфоном совершаются полностью неосознанно.
+                    </div>
+                </div>
+
+                <!-- Tab 2: Boredom -->
+                <div id="tab-boredom" class="tab-content space-y-4">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="p-2.5 rounded-xl bg-accent-cyan/10 text-accent-cyan font-display font-semibold">02</span>
+                        <h3 class="font-display text-xl sm:text-2xl font-light text-white">Страх стимуляционного голода</h3>
+                    </div>
+                    <p class="text-slate-300 text-sm sm:text-base font-light leading-relaxed">
+                        Современный мозг привык к непрерывному потоку дофамина. Когда внешние раздражители исчезают хотя бы на 10 секунд, мозг воспринимает это как информационный дефицит и требует скорейшего «пополнения».
+                    </p>
+                    <div class="p-4 rounded-xl bg-white/5 border border-white/5 text-xs text-slate-400 font-light italic">
+                        💡 В эксперименте Вирджинского университета (Wilson et al.) 67% мужчин предпочли получить легкий удар током, чем остаться на 15 минут в пустой комнате наедине со своими мыслями.
+                    </div>
+                </div>
+
+                <!-- Tab 3: Awkwardness -->
+                <div id="tab-awkward" class="tab-content space-y-4">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="p-2.5 rounded-xl bg-accent-rose/10 text-accent-rose font-display font-semibold">03</span>
+                        <h3 class="font-display text-xl sm:text-2xl font-light text-white">Защитный щит социальной неловкости</h3>
+                    </div>
+                    <p class="text-slate-300 text-sm sm:text-base font-light leading-relaxed">
+                        В лифте с незнакомцем, на вечеринке, пока собеседник отошел, или в общественном транспорте — смартфон создает иллюзию занятости и защищает нас от потенциального социального контакта.
+                    </p>
+                    <div class="p-4 rounded-xl bg-white/5 border border-white/5 text-xs text-slate-400 font-light italic">
+                        💡 Телефон выступает в роли цифрового «щита видимости», сигнализирующего окружающим: «Я занят, не трогайте меня».
+                    </div>
+                </div>
+
+                <!-- Tab 4: Fatigue -->
+                <div id="tab-fatigue" class="tab-content space-y-4">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="p-2.5 rounded-xl bg-accent-amber/10 text-accent-amber font-display font-semibold">04</span>
+                        <h3 class="font-display text-xl sm:text-2xl font-light text-white">Ложный отдых для уставшего мозга</h3>
+                    </div>
+                    <p class="text-slate-300 text-sm sm:text-base font-light leading-relaxed">
+                        Когда мы устаем от сложной умственной работы, нам кажется, что пролистывание соцсетей или коротких видео — это отдых. Однако префронтальная кора продолжат обрабатывать тысячи кадров и текстов, усугубляя истощение.
+                    </p>
+                    <div class="p-4 rounded-xl bg-white/5 border border-white/5 text-xs text-slate-400 font-light italic">
+                        💡 Мозг не отдыхает во время скроллинга ленты. Настоящее восстановление происходит только при снижении количества входящих стимулов.
+                    </div>
+                </div>
+
+                <!-- Tab 5: Waiting -->
+                <div id="tab-waiting" class="tab-content space-y-4">
+                    <div class="flex items-center gap-3 mb-4">
+                        <span class="p-2.5 rounded-xl bg-accent-emerald/10 text-accent-emerald font-display font-semibold">05</span>
+                        <h3 class="font-display text-xl sm:text-2xl font-light text-white">Социальное ожидание и прерывистое подкрепление</h3>
+                    </div>
+                    <p class="text-slate-300 text-sm sm:text-base font-light leading-relaxed">
+                        Отправив сообщение или выложив пост, мы попадаем в состояние неопределенности. Проверка экрана — это попытка контролировать ситуацию и получить «награду» в виде лайка или ответа.
+                    </p>
+                    <div class="p-4 rounded-xl bg-white/5 border border-white/5 text-xs text-slate-400 font-light italic">
+                        💡 Принцип вариативной награды (как в игровых автоматах): вы никогда не знаете точно, будет ли там новое сообщение, что делает проверку азартной.
+                    </div>
+                </div>
+
+            </div>
+        </section>
+
+        <section class="py-24 px-6 max-w-4xl mx-auto">
+            <div class="glass-card p-8 sm:p-12 rounded-3xl border border-white/10 relative">
+                <div class="text-center max-w-xl mx-auto mb-10">
+                    <span class="text-xs uppercase tracking-widest text-accent-violet font-semibold">Калькулятор состояния</span>
+                    <h2 class="font-display text-2xl sm:text-4xl font-light text-white mt-2">
+                        Индекс цифровой усталости
+                    </h2>
+                    <p class="text-slate-400 text-xs sm:text-sm mt-2">
+                        Передвигайте ползунки, чтобы рассчитать ваш текущий уровень перегрузки информацией.
+                    </p>
+                </div>
+
+                <div class="space-y-8 max-w-2xl mx-auto">
+                    <!-- Slider 1 -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-xs sm:text-sm">
+                            <span class="text-slate-300">Экранное время в день:</span>
+                            <span id="val-screen" class="font-semibold text-accent-violet">4 часа</span>
+                        </div>
+                        <input type="range" id="input-screen" min="1" max="12" value="4" oninput="calculateFatigue()" class="w-full">
+                    </div>
+
+                    <!-- Slider 2 -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-xs sm:text-sm">
+                            <span class="text-slate-300">Частота проверки сообщений:</span>
+                            <span id="val-check" class="font-semibold text-accent-cyan">Каждые 30 мин</span>
+                        </div>
+                        <input type="range" id="input-check" min="5" max="60" step="5" value="30" oninput="calculateFatigue()" class="w-full">
+                    </div>
+
+                    <!-- Slider 3 -->
+                    <div class="space-y-2">
+                        <div class="flex justify-between text-xs sm:text-sm">
+                            <span class="text-slate-300">Уровень тревожности без телефона (1-10):</span>
+                            <span id="val-anxiety" class="font-semibold text-accent-rose">4 / 10</span>
+                        </div>
+                        <input type="range" id="input-anxiety" min="1" max="10" value="4" oninput="calculateFatigue()" class="w-full">
+                    </div>
+
+                    <!-- Result Box -->
+                    <div class="mt-10 p-6 rounded-2xl bg-white/5 border border-white/10 text-center space-y-3">
+                        <div class="text-xs uppercase tracking-widest text-slate-400">Ваш показатель усталости:</div>
+                        <div id="fatigue-score" class="font-display text-4xl sm:text-5xl font-light text-accent-amber">48%</div>
+                        <p id="fatigue-advice" class="text-xs sm:text-sm text-slate-300 font-light max-w-md mx-auto">
+                            Умеренный уровень перегруза. Попробуйте устраивать 15-минутные паузы без гаджетов во второй половине дня.
+                        </p>
+                    </div>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-24 px-6 max-w-5xl mx-auto">
+            <div class="text-center mb-16">
+                <span class="text-xs uppercase tracking-widest text-accent-emerald font-semibold">Факты и наблюдения</span>
+                <h2 class="font-display text-3xl sm:text-4xl font-light text-white mt-2">
+                    Что говорят науки и люди
+                </h2>
+            </div>
+
+            <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+                <!-- Fact 1 -->
+                <div class="glass-card glass-card-hover p-6 rounded-2xl space-y-3">
+                    <div class="text-accent-cyan text-xs font-semibold uppercase tracking-wider">Исследование DMN</div>
+                    <p class="text-xs sm:text-sm text-slate-300 font-light leading-relaxed">
+                        Когда мы ничего не делаем, активируется **Сеть пассивного режима работы мозга (DMN)**. Именно она отвечает за осмысление опыта, самосознание и творческие озарения.
+                    </p>
+                </div>
+
+                <!-- Quote 1 -->
+                <div class="glass-card glass-card-hover p-6 rounded-2xl space-y-3">
+                    <div class="text-accent-violet text-xs font-semibold uppercase tracking-wider">Из наблюдений</div>
+                    <blockquote class="text-xs sm:text-sm text-slate-300 font-light italic leading-relaxed">
+                        «Когда у меня отключился интернет на полдня, первые два часа я чувствовал панику, а потом впервые за год просто смотрел в окно и заметил, как красиво падает свет.»
+                    </blockquote>
+                    <span class="text-[11px] text-slate-500 block">— Алексей, 24 года</span>
+                </div>
+
+                <!-- Fact 2 -->
+                <div class="glass-card glass-card-hover p-6 rounded-2xl space-y-3">
+                    <div class="text-accent-rose text-xs font-semibold uppercase tracking-wider">Эффект переключения</div>
+                    <p class="text-xs sm:text-sm text-slate-300 font-light leading-relaxed">
+                        Каждое отвлечение на сообщение стоит мозгу **до 23 минут**, необходимых для возврата к прежнему уровню глубокой концентрации.
+                    </p>
+                </div>
+            </div>
+        </section>
+
+        <section class="py-16 px-6 max-w-4xl mx-auto text-center">
+            <div class="glass-card p-10 rounded-3xl border border-white/10 space-y-6">
+                <h2 class="font-display text-2xl sm:text-3xl font-light text-white">
+                    Готовы сделать паузу прямо сейчас?
+                </h2>
+                <p class="text-slate-400 text-xs sm:text-sm max-w-lg mx-auto font-light">
+                    Запустите 1-минутную дыхательную практику, чтобы вернуть внимание в тело и успокоить нервную систему.
+                </p>
+                <button onclick="openBreathModal()" class="px-8 py-3.5 rounded-full bg-gradient-to-r from-accent-violet to-accent-cyan text-white font-medium text-xs sm:text-sm hover:opacity-90 transition-opacity shadow-lg shadow-accent-violet/20">
+                    Запустить минутку осознанности
+                </button>
+            </div>
+        </section>
+
+        <footer class="py-16 px-6 border-t border-white/5 text-slate-500 text-xs font-light">
+            <div class="max-w-5xl mx-auto space-y-6">
+                <div class="font-medium text-slate-400">Источники и исследования:</div>
+                <ul class="space-y-2 leading-relaxed">
+                    <li>1. Wilson, T. D., et al. (2014). *Just think: The challenges of the disengaged mind.* Science, 345(6192), 75-77.</li>
+                    <li>2. Ward, A. F., et al. (2017). *Brain Drain: The Mere Presence of One’s Own Smartphone Reduces Available Cognitive Capacity.* Journal of the Association for Consumer Research.</li>
+                    <li>3. Raichle, M. E. (2015). *The brain's default mode network.* Annual Review of Neuroscience, 38, 433-447.</li>
+                </ul>
+                <div class="pt-6 border-t border-white/5 flex flex-col sm:flex-row justify-between items-center gap-4 text-slate-600">
+                    <span>© Интерактивный лонгрид «Цифровая Пауза»</span>
+                    <span>Создано в учебных целях</span>
+                </div>
+            </div>
+        </footer>
+    </div>
+
+    <div id="breath-modal" class="fixed inset-0 z-50 flex items-center justify-center bg-dark-900/90 backdrop-blur-xl opacity-0 pointer-events-none transition-opacity duration-500 p-6 text-center">
+        <div class="max-w-md w-full flex flex-col items-center relative">
+            <!-- Close Button -->
+            <button onclick="closeBreathModal()" class="absolute -top-12 right-0 text-slate-400 hover:text-white text-xs uppercase tracking-widest">
+                ✕ Закрыть
+            </button>
+
+            <!-- Breathing Sphere -->
+            <div id="breath-container" class="relative flex items-center justify-center w-48 h-48 my-8">
+                <div class="breathing-circle absolute w-32 h-32 rounded-full bg-gradient-to-tr from-accent-violet/40 to-accent-cyan/40 border border-accent-cyan/50 blur-sm"></div>
+                <div class="absolute w-24 h-24 rounded-full bg-dark-800 border border-white/20 flex items-center justify-center">
+                    <span id="breath-timer" class="font-display text-2xl font-light text-white">60</span>
+                </div>
+            </div>
+
+            <div id="breath-guide" class="font-display text-xl font-light text-white mb-2">
+                Приготовьтесь...
+            </div>
+            <p class="text-xs text-slate-400 font-light">
+                Следите за ритмом пульсации: Вдох (4с) — Задержка (2с) — Выдох (4с)
+            </p>
+        </div>
+    </div>
+
+    <script>
+        // --- 1. Initial 5-Second Silence Timer ---
+        let secondsLeft = 5;
+        const timerRing = document.getElementById('timer-ring');
+        const timerSeconds = document.getElementById('timer-seconds');
+        const pauseScreen = document.getElementById('pause-screen');
+        const mainWrapper = document.getElementById('main-wrapper');
+        const circumference = 402.12; // 2 * PI * 64
+
+        const countdownInterval = setInterval(() => {
+            secondsLeft--;
+            timerSeconds.textContent = secondsLeft;
+            
+            // Update circular SVG stroke offset
+            const offset = circumference - (secondsLeft / 5) * circumference;
+            timerRing.style.strokeDashoffset = offset;
+
+            if (secondsLeft <= 0) {
+                clearInterval(countdownInterval);
+                // Unlock Page
+                pauseScreen.classList.add('opacity-0', 'pointer-events-none');
+                document.body.classList.remove('locked');
+                mainWrapper.classList.remove('opacity-20');
+                mainWrapper.classList.add('opacity-100');
+            }
+        }, 1000);
+
+        // --- 2. Interactive Tabs Logic ---
+        function switchTab(tabId) {
+            // Hide all tab contents
+            document.querySelectorAll('.tab-content').forEach(el => el.classList.remove('active'));
+            // Reset button active styles
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.classList.remove('border-accent-violet', 'text-white');
+                btn.classList.add('text-slate-400');
+            });
+
+            // Show target tab content
+            const targetContent = document.getElementById('tab-' + tabId);
+            if (targetContent) targetContent.classList.add('active');
+
+            // Highlight target button
+            const targetBtn = document.getElementById('btn-' + tabId);
+            if (targetBtn) {
+                targetBtn.classList.add('border-accent-violet', 'text-white');
+                targetBtn.classList.remove('text-slate-400');
+            }
+        }
+
+        // --- 3. Digital Fatigue Calculator Logic ---
+        function calculateFatigue() {
+            const screen = parseInt(document.getElementById('input-screen').value);
+            const check = parseInt(document.getElementById('input-check').value);
+            const anxiety = parseInt(document.getElementById('input-anxiety').value);
+
+            // Update Labels
+            document.getElementById('val-screen').textContent = screen + ' ч.';
+            document.getElementById('val-check').textContent = 'Каждые ' + check + ' мин.';
+            document.getElementById('val-anxiety').textContent = anxiety + ' / 10';
+
+            // Formula calculation (0 - 100%)
+            const screenScore = (screen / 12) * 40;
+            const checkScore = ((60 - check) / 55) * 35;
+            const anxietyScore = (anxiety / 10) * 25;
+
+            const totalScore = Math.min(100, Math.round(screenScore + checkScore + anxietyScore));
+
+            const scoreEl = document.getElementById('fatigue-score');
+            const adviceEl = document.getElementById('fatigue-advice');
+
+            scoreEl.textContent = totalScore + '%';
+
+            if (totalScore < 35) {
+                scoreEl.className = 'font-display text-4xl sm:text-5xl font-light text-accent-emerald';
+                adviceEl.textContent = 'Отличный баланс! Вы сохраняете здоровые границы с технологиями.';
+            } else if (totalScore < 70) {
+                scoreEl.className = 'font-display text-4xl sm:text-5xl font-light text-accent-amber';
+                adviceEl.textContent = 'Умеренный уровень перегруза. Попробуйте устраивать 15-минутные паузы без гаджетов во второй половине дня.';
+            } else {
+                scoreEl.className = 'font-display text-4xl sm:text-5xl font-light text-accent-rose';
+                adviceEl.textContent = 'Высокий уровень цифровой усталости! Мозгу срочно нужен полноценный отдых и цифровой детокс.';
+            }
+        }
+
+        // --- 4. Guided Breathing Practice Modal Logic ---
+        let breathInterval = null;
+        let breathSeconds = 60;
+
+        function openBreathModal() {
+            const modal = document.getElementById('breath-modal');
+            const container = document.getElementById('breath-container');
+            modal.classList.remove('opacity-0', 'pointer-events-none');
+            container.classList.add('breathing-active');
+
+            breathSeconds = 60;
+            document.getElementById('breath-timer').textContent = breathSeconds;
+
+            const guideEl = document.getElementById('breath-guide');
+            
+            // Cycle guide text (4s inhale, 2s hold, 4s exhale)
+            let cyclePhase = 0;
+            const updateGuide = () => {
+                if (cyclePhase === 0) guideEl.textContent = 'Вдох... (4с)';
+                else if (cyclePhase === 4) guideEl.textContent = 'Задержка... (2с)';
+                else if (cyclePhase === 6) guideEl.textContent = 'Выдох... (4с)';
+                
+                cyclePhase = (cyclePhase + 1) % 10;
+            };
+
+            updateGuide();
+            
+            breathInterval = setInterval(() => {
+                breathSeconds--;
+                document.getElementById('breath-timer').textContent = breathSeconds;
+                updateGuide();
+
+                if (breathSeconds <= 0) {
+                    closeBreathModal();
+                }
+            }, 1000);
+        }
+
+        function closeBreathModal() {
+            const modal = document.getElementById('breath-modal');
+            const container = document.getElementById('breath-container');
+            modal.classList.add('opacity-0', 'pointer-events-none');
+            container.classList.remove('breathing-active');
+            if (breathInterval) clearInterval(breathInterval);
+        }
+    </script>
+</body>
+</html>
